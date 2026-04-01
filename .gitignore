@@ -1,0 +1,10 @@
+# Ignore IDE specific files
+*.iml
+.idea/
+
+# Ignore compiled Python files
+*.pyc
+__pycache__/
+
+# Ignore XML files (be careful, some config might need XML)
+*.xml

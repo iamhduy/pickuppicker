@@ -1,0 +1,8 @@
+fastapi
+uvicorn
+requests
+psycopg2-binary
+pytz
+pydantic
+python-multipart
+python-jose[cryptography]
