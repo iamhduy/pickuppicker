@@ -3,6 +3,7 @@ from fastapi import FastAPI, Form, UploadFile, File, HTTPException, Depends, Bod
 from database import get_db, init_db, feed_data
 from utils import get_current_user, create_jwt, encode_pw
 
+
 def should_initialize():
     with get_db() as conn:
         with conn.cursor() as c:
@@ -20,7 +21,7 @@ async def lifespan(app: FastAPI):
     if should_initialize():
         print("Volume is empty. Initializing DB...")
         init_db()
-        #feed_data()
+        # feed_data()
         print("Initializing DB complete")
     else:
         print("Volume detected with existing data. Skipping initialization.")
@@ -35,6 +36,9 @@ def home():
     return {"message": "hello"}
 
 
+############
+# Players  #
+############
 @app.get("/players")
 def get_all_players():
     conn = get_db()
@@ -54,9 +58,15 @@ def get_all_players():
 
 
 @app.post("/create_player")
-def create_player(username: str = Form(default=None), password: str = Form(default=None), salt: str = Form(default="XD")):
+def create_player(username: str = Form(default=None), password: str = Form(default=None),
+                  salt: str = Form(default="XD")):
     conn = get_db()
     c = conn.cursor()
+
+    # CHECK FOR SAME USERNAME
+    c.execute("SELECT id FROM players WHERE username = %s", (username, ))
+    if c.fetchone():
+        raise HTTPException(status_code=422, detail="Username is already existed")
 
     encrypted_pw = encode_pw(password, salt)
     player_info = (username, encrypted_pw, salt)
@@ -68,11 +78,12 @@ def create_player(username: str = Form(default=None), password: str = Form(defau
 
     return {"message": f'Player {user_id} created with username {username}'}
 
+
 @app.delete("/{player_id}/delete_player")
 def delete_player(player_id: int):
     conn = get_db()
     c = conn.cursor()
-    c.execute("DELETE from players WHERE id = %s", (player_id, ))
+    c.execute("DELETE from players WHERE id = %s", (player_id,))
     conn.commit()
     conn.close()
     return {"message": f'Player {player_id} deleted'}
@@ -96,6 +107,10 @@ def login(username: str = Form(default=None), password: str = Form(default=None)
     return {"message": msg, "jwt": jwt}
 
 
+############
+# Sessions #
+############
+
 @app.get("/sessions")
 def get_all_sessions():
     conn = get_db()
@@ -107,35 +122,18 @@ def get_all_sessions():
     sessions = []
     for r in rows:
         session_info = dict()
-        session_info["id"] = r[0]
+        session_id = r[0]
+        session_info["id"] = session_id
         session_info["owner"] = get_username_by_id(r[2])
         session_info["date"] = r[1].strftime("%m/%d/%Y")
+
+        c.execute("SELECT COUNT(*) FROM session_player WHERE session_id = %s", (session_id, ))
+        session_info["player joined"] = c.fetchone()[0]
+
         sessions.append(session_info)
 
-    return sessions
-
-
-@app.get("/sessions/{session_id}")
-def view_session_by_id(session_id: int):
-    conn = get_db()
-    c = conn.cursor()
-
-    c.execute("SELECT * FROM sessions WHERE id = %s", (session_id, ))
-    session_info = c.fetchone()
-    date = session_info[1].strftime("%m/%d/%Y")
-    owner = get_username_by_id(session_info[2])
-
-    c.execute("SELECT username FROM players p INNER JOIN session_player sp "
-              "ON p.id = sp.player_id "
-              "WHERE session_id = %s", (session_id, ))
-    rows = c.fetchall()
     conn.close()
-
-    players = []
-    for r in rows:
-        players.append(r[0]) # append username
-
-    return {"id": session_id, "date": date, "owner": owner, "players": players}
+    return sessions
 
 
 @app.post("/sessions/{session_id}/join_session")
@@ -144,11 +142,11 @@ def join_session(session_id: int, user: dict = Depends(get_current_user)):
 
     conn = get_db()
     c = conn.cursor()
-    c.execute("INSERT INTO session_player VALUES (%s, %s)", (user_id, session_id))
+    c.execute("INSERT INTO session_player VALUES (%s, %s, %s)", (user_id, session_id, 0))
     conn.commit()
     conn.close()
 
-    return {"message": f'Player {user_id} join session {session_id}'}
+    return {"message": f'Player {get_username_by_id(user_id)} join session {session_id}'}
 
 
 @app.post("/add_session")
@@ -166,7 +164,7 @@ def add_session(session_date: str = Form(default=None), user: dict = Depends(get
     conn.commit()
     conn.close()
 
-    return {"message": f'Session created by player {user_id}', "date": session_date}
+    return {"message": f'Session created by player {get_username_by_id(user_id)}', "date": session_date}
 
 
 @app.delete("/{session_id}/delete_session")
@@ -181,6 +179,94 @@ def delete_session(session_id: int):
     return {"message": f'Session {session_id} deleted'}
 
 
+@app.get("/sessions/{session_id}")
+def view_session_by_id(session_id: int):
+    conn = get_db()
+    c = conn.cursor()
+
+    c.execute("SELECT * FROM sessions WHERE id = %s", (session_id,))
+    session_info = c.fetchone()
+    date = session_info[1].strftime("%m/%d/%Y")
+    owner = get_username_by_id(session_info[2])
+
+    c.execute("SELECT player_id, team_id FROM session_player WHERE session_id = %s", (session_id, ))
+    rows = c.fetchall()
+    conn.close()
+
+    players = []
+    for r in rows:
+        player_id, team_id = r
+        info = {"player": get_username_by_id(player_id), "team": team_id}
+        players.append(info)
+
+    return {"id": session_id, "date": date, "owner": owner, "players": players}
+
+
+@app.post("/sessions/{session_id}/add_game")
+def create_new_game(session_id: int, team1: int = Form(default=None), team2: int = Form(default=None)):
+    conn = get_db()
+    c = conn.cursor()
+
+    c.execute("INSERT INTO game (session_id, team1_id, team2_id, team1_score, team2_score) WHERE id = %s RETURNING id",
+              (session_id, team1, team2, 0, 0))
+    game_id = c.fetchone()[0]
+    conn.commit()
+    conn.close()
+    return {"message": f'Game {game_id} created'}
+
+
+@app.post("/sessions/{session_id}/update_team")
+def join_team(session_id, player_id: int = Form(default=None), team_id: int = Form(default=None)):
+    if team_id > 3 or team_id < 0:
+        raise HTTPException(status_code=404, detail="No team with this id")
+
+    conn = get_db()
+    c = conn.cursor()
+
+    c.execute("UPDATE session_player SET team_id = %s WHERE player_id = %s AND session_id = %s",
+              (team_id, player_id, session_id))
+
+    conn.commit()
+    conn.close()
+    return {"message": f'Player {get_username_by_id(player_id)} join team {team_id}'}
+
+
+##########
+# Games  #
+##########
+@app.get("games/{game_id}")
+def get_game(game_id: int):
+    conn = get_db()
+    c = conn.cursor()
+    c.execute("SELECT team1_score, team2_score FROM game WHERE game_id = %s", (game_id, ))
+    team1_score, team2_score = c.fetchone()
+
+    conn.close()
+    return {'id': game_id, 'team1': team1_score, 'team2': team2_score}
+
+
+@app.post("games/{game_id}/update")
+def update_game(game_id: int, new_team1_score: int = Form(default=None), new_team2_score: int = Form(default=None)):
+    conn = get_db()
+    c = conn.cursor()
+
+    c.execute("SELECT team1_score, team2_score FROM game WHERE game_id = %s", (game_id,))
+
+    cur_team1_score, cur_team2_score = c.fetchone()
+    if not new_team1_score:
+        new_team1_score = cur_team1_score
+
+    if not new_team2_score:
+        new_team2_score = cur_team2_score
+
+    c.execute("UPDATE game SET team1_score = %s, team2_score = %s WHERE game_id = %s",
+              (new_team1_score, new_team2_score, game_id))
+
+    conn.commit()
+    conn.close()
+    return {"message": f'Game {game_id} updated'}
+
+
 def verify_username(username: str):
     conn = get_db()
     c = conn.cursor()
@@ -190,6 +276,7 @@ def verify_username(username: str):
 
     conn.close()
     return row if row else False
+
 
 def get_username_by_id(user_id: int):
     conn = get_db()

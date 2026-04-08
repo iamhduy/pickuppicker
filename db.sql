@@ -26,6 +26,8 @@ CREATE TABLE IF NOT EXISTS game
 CREATE TABLE IF NOT EXISTS session_player
 (
     player_id INTEGER REFERENCES players (id) ON DELETE CASCADE,
-    session_id  INTEGER REFERENCES sessions (id) ON DELETE CASCADE
-)
+    session_id  INTEGER REFERENCES sessions (id) ON DELETE CASCADE,
+    team_id INTEGER
+);
+
 
