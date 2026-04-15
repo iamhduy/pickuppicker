@@ -2,6 +2,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Form, UploadFile, File, HTTPException, Depends, Body, Request
 from database import get_db, init_db, feed_data
 from utils import get_current_user, create_jwt, encode_pw
+from fastapi.middleware.cors import CORSMiddleware
 
 
 def should_initialize():
@@ -29,6 +30,18 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(lifespan=lifespan)
+
+app.add_middleware(
+    CORSMiddleware,
+    # Add your frontend URLs here. Vite usually runs on localhost:5173
+    allow_origins=[
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],  # Allows all HTTP methods (GET, POST, DELETE, etc.)
+    allow_headers=["*"],  # Allows all headers
+)
 
 
 @app.get("/")
@@ -64,7 +77,7 @@ def create_player(username: str = Form(default=None), password: str = Form(defau
     c = conn.cursor()
 
     # CHECK FOR SAME USERNAME
-    c.execute("SELECT id FROM players WHERE username = %s", (username, ))
+    c.execute("SELECT id FROM players WHERE username = %s", (username,))
     if c.fetchone():
         raise HTTPException(status_code=422, detail="Username is already existed")
 
@@ -127,7 +140,7 @@ def get_all_sessions():
         session_info["owner"] = get_username_by_id(r[2])
         session_info["date"] = r[1].strftime("%m/%d/%Y")
 
-        c.execute("SELECT COUNT(*) FROM session_player WHERE session_id = %s", (session_id, ))
+        c.execute("SELECT COUNT(*) FROM session_player WHERE session_id = %s", (session_id,))
         session_info["player joined"] = c.fetchone()[0]
 
         sessions.append(session_info)
@@ -142,6 +155,11 @@ def join_session(session_id: int, user: dict = Depends(get_current_user)):
 
     conn = get_db()
     c = conn.cursor()
+    c.execute("SELECT * FROM session_player WHERE session_id = %s AND user_id = %s", (session_id, user_id))
+    if c.fetchone():
+        conn.close()
+        raise HTTPException(status_code=422, detail="User have already joined")
+
     c.execute("INSERT INTO session_player VALUES (%s, %s, %s)", (user_id, session_id, 0))
     conn.commit()
     conn.close()
@@ -189,7 +207,7 @@ def view_session_by_id(session_id: int):
     date = session_info[1].strftime("%m/%d/%Y")
     owner = get_username_by_id(session_info[2])
 
-    c.execute("SELECT player_id, team_id FROM session_player WHERE session_id = %s", (session_id, ))
+    c.execute("SELECT player_id, team_id FROM session_player WHERE session_id = %s", (session_id,))
     rows = c.fetchall()
     conn.close()
 
@@ -238,7 +256,7 @@ def join_team(session_id, player_id: int = Form(default=None), team_id: int = Fo
 def get_game(game_id: int):
     conn = get_db()
     c = conn.cursor()
-    c.execute("SELECT team1_score, team2_score FROM game WHERE game_id = %s", (game_id, ))
+    c.execute("SELECT team1_score, team2_score FROM game WHERE game_id = %s", (game_id,))
     team1_score, team2_score = c.fetchone()
 
     conn.close()
