@@ -33,5 +33,16 @@ services:
       timeout: 5s
       retries: 5
 
+  frontend:
+    build: ./pickuppicker-ui  # Make sure this points to your React folder
+    ports:
+      - "5173:5173"
+    depends_on:
+      - api
+    volumes:
+      - ./pickuppicker-ui:/app
+      # This prevents your local node_modules from overwriting the container's
+      - /app/node_modules
+
 volumes:
   pg_data_proj:

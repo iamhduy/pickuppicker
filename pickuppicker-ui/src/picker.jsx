@@ -1,13 +1,11 @@
 import React, {useState, useEffect} from 'react';
 import {DragDropContext, Droppable, Draggable} from '@hello-pangea/dnd';
 import {useParams, useNavigate} from 'react-router-dom';
-import parseJwt from './home.jsx'
 import Navbar from "./navbar.jsx";
+import {parseJwt} from "./utils.js";
 
-// Use an existing session ID for testing
-const SESSION_ID = 1;
+
 const API_BASE = "http://localhost:8080";
-
 
 export default function PickupPicker() {
     const {sessionId} = useParams();
@@ -16,6 +14,8 @@ export default function PickupPicker() {
     // 3. Grab the login state
     const [jwt, setJwt] = useState(localStorage.getItem("jwt"));
     const userInfo = jwt ? parseJwt(jwt) : null;
+
+    const [sessionDetails, setSessionDetails] = useState(null);
 
     // 4. Create the logout function for this page
     const handleLogout = () => {
@@ -39,9 +39,9 @@ export default function PickupPicker() {
                 const allPlayers = await playerRes.json();
 
                 // Fetch current session to see who is already assigned
-                const sessionRes = await fetch(`${API_BASE}/sessions/${SESSION_ID}`);
+                const sessionRes = await fetch(`${API_BASE}/sessions/${sessionId}`);
                 const sessionData = await sessionRes.json();
-
+                setSessionDetails(sessionData)
                 // Organize players into their respective teams based on session_player data
                 const newTeams = {"0": [], "1": [], "2": [], "3": []};
 
@@ -105,7 +105,7 @@ export default function PickupPicker() {
         formData.append('team_id', parseInt(destTeamId));
 
         try {
-            const response = await fetch(`${API_BASE}/sessions/${SESSION_ID}/update_team`, {
+            const response = await fetch(`${API_BASE}/sessions/${sessionId}/update_team`, {
                 method: 'POST',
                 body: formData,
             });
@@ -129,6 +129,7 @@ export default function PickupPicker() {
             {/* Your drag and drop board goes here... */}
             <div style={{marginTop: '2rem'}}>
                 <h2>Session {sessionId} Board</h2>
+                <h2>Date: {sessionDetails?.date}</h2>
                 <DragDropContext onDragEnd={onDragEnd}>
                     {/* PLAYER POOL (Team 0) */}
                     <div style={{marginBottom: '2rem'}}>
