@@ -10,7 +10,7 @@ export default function Home() {
     const [usernameInput, setUsernameInput] = useState("");
     const [passwordInput, setPasswordInput] = useState("");
     const [sessions, setSessions] = useState([]);
-
+    const homeText = "Pickup Picker";
     // NEW: State to toggle between Login and Sign Up views
     const [isLoginView, setIsLoginView] = useState(true);
 
@@ -138,7 +138,7 @@ export default function Home() {
     if (jwt && userInfo) {
         return (
             <div style={{fontFamily: 'sans-serif', maxWidth: '800px', margin: '0 auto', padding: '2rem'}}>
-                <Navbar userInfo={userInfo} onLogout={handleLogout}/>
+                <Navbar userInfo={userInfo} onLogout={handleLogout} navBarText={homeText}/>
 
                 <div style={{marginTop: '2rem'}}>
                     {/* Header Row with Flexbox to align title and button */}
@@ -152,8 +152,8 @@ export default function Home() {
                         <button
                             onClick={() => setShowCreateModal(true)}
                             style={{
-                                background: '#3498db',
-                                color: 'white',
+                                background: "none",
+                                color: 'black',
                                 border: 'none',
                                 padding: '10px 20px',
                                 borderRadius: '4px',
@@ -188,14 +188,14 @@ export default function Home() {
                                         <Link
                                             to={`/sessions/${session.id}`}
                                             style={{
-                                                background: '#2ecc71',
+                                                background: '#509384',
                                                 color: 'white',
                                                 padding: '8px 16px',
                                                 textDecoration: 'none',
                                                 borderRadius: '4px'
                                             }}
                                         >
-                                            Join Session
+                                            View Session
                                         </Link>
 
                                         <button

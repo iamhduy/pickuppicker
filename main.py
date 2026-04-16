@@ -1,5 +1,7 @@
+import random
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, Form, UploadFile, File, HTTPException, Depends, Body, Request
+from fastapi import FastAPI, Form, UploadFile, File, HTTPException, Depends, Body, Request, WebSocket, \
+    WebSocketDisconnect
 from database import get_db, init_db, feed_data
 from utils import get_current_user, create_jwt, encode_pw
 from fastapi.middleware.cors import CORSMiddleware
@@ -42,6 +44,42 @@ app.add_middleware(
     allow_methods=["*"],  # Allows all HTTP methods (GET, POST, DELETE, etc.)
     allow_headers=["*"],  # Allows all headers
 )
+
+
+class ConnectionManager:
+    def __init__(self):
+        # Maps session_id to a list of active WebSocket connections
+        self.active_connections: dict[int, list[WebSocket]] = {}
+
+    async def connect(self, websocket: WebSocket, session_id: int):
+        await websocket.accept()
+        if session_id not in self.active_connections:
+            self.active_connections[session_id] = []
+        self.active_connections[session_id].append(websocket)
+
+    def disconnect(self, websocket: WebSocket, session_id: int):
+        if session_id in self.active_connections:
+            self.active_connections[session_id].remove(websocket)
+
+    async def broadcast(self, message: str, session_id: int):
+        if session_id in self.active_connections:
+            for connection in self.active_connections[session_id]:
+                await connection.send_text(message)
+
+
+manager = ConnectionManager()
+
+
+# Streaming service
+@app.websocket("/ws/sessions/{session_id}")
+async def websocket_endpoint(websocket: WebSocket, session_id: int):
+    await manager.connect(websocket, session_id)
+    try:
+        while True:
+            # Keep the connection open and listen
+            data = await websocket.receive_text()
+    except WebSocketDisconnect:
+        manager.disconnect(websocket, session_id)
 
 
 @app.get("/")
@@ -138,7 +176,7 @@ def get_all_sessions():
         session_id = r[0]
         session_info["id"] = session_id
         session_info["owner"] = get_username_by_id(r[2])
-        session_info["date"] = r[1].strftime("%m/%d/%Y")
+        session_info["date"] = r[1].strftime("%m/%d/%Y - %H:%M")
 
         c.execute("SELECT COUNT(*) FROM session_player WHERE session_id = %s", (session_id,))
         session_info["player joined"] = c.fetchone()[0]
@@ -150,21 +188,66 @@ def get_all_sessions():
 
 
 @app.post("/sessions/{session_id}/join_session")
-def join_session(session_id: int, user: dict = Depends(get_current_user)):
+async def join_session(session_id: int, user: dict = Depends(get_current_user)):
     user_id = user["id"]
 
     conn = get_db()
     c = conn.cursor()
-    c.execute("SELECT * FROM session_player WHERE session_id = %s AND user_id = %s", (session_id, user_id))
+    c.execute("SELECT * FROM session_player WHERE session_id = %s AND player_id = %s", (session_id, user_id))
     if c.fetchone():
         conn.close()
         raise HTTPException(status_code=422, detail="User have already joined")
 
-    c.execute("INSERT INTO session_player VALUES (%s, %s, %s)", (user_id, session_id, 0))
+    c.execute("INSERT INTO session_player VALUES (%s, %s, %s, %s)", (user_id, session_id, 0, "P"))
     conn.commit()
     conn.close()
 
+    await manager.broadcast("BOARD_UPDATED", session_id)  # Streaming call!
     return {"message": f'Player {get_username_by_id(user_id)} join session {session_id}'}
+
+
+@app.post("/sessions/{session_id}/leave")
+async def leave(session_id: int, user: dict = Depends(get_current_user)):
+    user_id = user["id"]
+
+    conn = get_db()
+    c = conn.cursor()
+    c.execute("SELECT * FROM session_player WHERE session_id = %s AND player_id = %s", (session_id, user_id))
+    if not c.fetchone():
+        conn.close()
+        raise HTTPException(status_code=422, detail=f"No record of this user for session {session_id}")
+
+    c.execute("DELETE FROM session_player WHERE session_id = %s AND player_id = %s", (session_id, user_id))
+    conn.commit()
+    conn.close()
+
+    await manager.broadcast("BOARD_UPDATED", session_id)  # Streaming call!
+    return {"message": f'Player {get_username_by_id(user_id)} leave session {session_id}'}
+
+
+@app.post("/sessions/{session_id}/captain")
+async def join_captain(session_id: int, user: dict = Depends(get_current_user)):
+    user_id = user["id"]
+
+    conn = get_db()
+    c = conn.cursor()
+    c.execute("UPDATE session_player SET pos = %s WHERE session_id = %s AND player_id = %s",
+              ("C", session_id, user_id))
+    conn.commit()
+    conn.close()
+
+    await manager.broadcast("BOARD_UPDATED", session_id)  # Streaming call!
+    return {"message": f'Captain {get_username_by_id(user_id)} on duty!'}
+
+
+@app.post("/sessions/{session_id}/player")
+async def join_player(session_id: int, user: dict = Depends(get_current_user)):
+    user_id = user["id"]
+
+    update_role_player(session_id, user_id)
+
+    await manager.broadcast("BOARD_UPDATED", session_id)  # Streaming call!
+    return {"message": f'Player {get_username_by_id(user_id)} ready!'}
 
 
 @app.post("/add_session")
@@ -204,20 +287,46 @@ def view_session_by_id(session_id: int):
 
     c.execute("SELECT * FROM sessions WHERE id = %s", (session_id,))
     session_info = c.fetchone()
-    date = session_info[1].strftime("%m/%d/%Y")
+    date = session_info[1].strftime("%m/%d/%Y - %H:%M")
     owner = get_username_by_id(session_info[2])
 
-    c.execute("SELECT player_id, team_id FROM session_player WHERE session_id = %s", (session_id,))
+    c.execute("SELECT player_id, team_id, pos FROM session_player WHERE session_id = %s", (session_id,))
     rows = c.fetchall()
     conn.close()
 
     players = []
+    keepers = []
     for r in rows:
-        player_id, team_id = r
-        info = {"player": get_username_by_id(player_id), "team": team_id}
-        players.append(info)
+        player_id, team_id, role = r
+        if role == "P":
+            display_role = "Player"
+            info = {"player": get_username_by_id(player_id), "team": team_id, "id": player_id, "role": display_role}
+            players.append(info)
+        else:
+            display_role = "Captain"
+            info = {"player": get_username_by_id(player_id), "team": team_id, "id": player_id, "role": display_role}
+            keepers.append(info)
+    print("KEEPERS:", keepers)
+    return {"id": session_id, "date": date, "owner": owner, "players": players, "keepers": keepers}
 
-    return {"id": session_id, "date": date, "owner": owner, "players": players}
+
+@app.post("/sessions/{session_id}/randomize")
+async def random_team(session_id: int):
+    conn = get_db()
+    c = conn.cursor()
+    c.execute("SELECT player_id FROM session_player WHERE session_id = %s AND pos = %s", (session_id, 'C'))
+
+    keepers = [cap[0] for cap in c.fetchall()]
+    conn.close()
+
+    if 2 <= len(keepers) <= 4:
+        distribute_keeper(session_id, keepers)
+        random_status = True
+    else:
+        random_status = False
+
+    await manager.broadcast("BOARD_UPDATED", session_id)  # Streaming call!
+    return {"code": random_status}
 
 
 @app.post("/sessions/{session_id}/add_game")
@@ -234,19 +343,26 @@ def create_new_game(session_id: int, team1: int = Form(default=None), team2: int
 
 
 @app.post("/sessions/{session_id}/update_team")
-def join_team(session_id, player_id: int = Form(default=None), team_id: int = Form(default=None)):
-    if team_id > 3 or team_id < 0:
+async def join_team(session_id: int, player_id: int = Form(default=None), team_id: int = Form(default=None)):
+    if team_id > 4 or team_id < 0:
         raise HTTPException(status_code=404, detail="No team with this id")
 
+    update_team_in_session(session_id, player_id, team_id)
+
+    # TELL EVERYONE TO REFRESH
+    await manager.broadcast("BOARD_UPDATED", session_id)
+
+    return {"message": f'Player {get_username_by_id(player_id)} join team {team_id}'}
+
+
+@app.get("/test/{session_id}/all")
+def get_all_session(session_id: int):
     conn = get_db()
     c = conn.cursor()
-
-    c.execute("UPDATE session_player SET team_id = %s WHERE player_id = %s AND session_id = %s",
-              (team_id, player_id, session_id))
-
-    conn.commit()
+    c.execute("SELECT * FROM session_player WHERE session_id = %s", (session_id,))
+    rows = c.fetchall()
     conn.close()
-    return {"message": f'Player {get_username_by_id(player_id)} join team {team_id}'}
+    return rows
 
 
 ##########
@@ -296,6 +412,30 @@ def verify_username(username: str):
     return row if row else False
 
 
+def update_team_in_session(session_id, player_id, team_id):
+    conn = get_db()
+    c = conn.cursor()
+
+    c.execute("UPDATE session_player SET team_id = %s WHERE player_id = %s AND session_id = %s",
+              (team_id, player_id, session_id))
+
+    conn.commit()
+    conn.close()
+    return
+
+
+def update_role_player(session_id: int, user_id: int):
+    conn = get_db()
+    c = conn.cursor()
+
+    c.execute("UPDATE session_player SET pos = %s WHERE session_id = %s AND player_id = %s",
+              ("P", session_id, user_id))
+
+    conn.commit()
+    conn.close()
+    return
+
+
 def get_username_by_id(user_id: int):
     conn = get_db()
     c = conn.cursor()
@@ -305,3 +445,19 @@ def get_username_by_id(user_id: int):
 
     conn.close()
     return row[1] if row else False
+
+
+def distribute_keeper(session_id: int, keepers):
+    teams = [i + 1 for i in range(len(keepers))]
+    random.shuffle(teams)
+    random.shuffle(keepers)
+
+    for i, keeper_id in enumerate(keepers):
+        # Get the random team and assign that keeper/captain
+        team_id = teams[i]
+        update_team_in_session(session_id, keeper_id, team_id)
+
+        # Change role to player
+        update_role_player(session_id, keeper_id)
+
+    return
