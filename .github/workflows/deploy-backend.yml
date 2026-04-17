@@ -28,14 +28,11 @@ jobs:
       - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@v2
 
-      - name: Get Permission
-        uses: gcloud services enable run.googleapis.com cloudbuild.googleapis.com artifactregistry.googleapis.com
-
       - name: Deploy to Cloud Run
         run: |
           gcloud run deploy pickuppicker-backend \
             --source . \
-            --region us-central1 \
+            --region us-east1 \
             --allow-unauthenticated \
             --port 8080 \
             --timeout 3600 \
