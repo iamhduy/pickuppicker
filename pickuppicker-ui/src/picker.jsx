@@ -5,7 +5,7 @@ import Navbar from "./navbar.jsx";
 import {parseJwt} from "./utils.js";
 
 
-const API_BASE = "http://localhost:8080";
+const API_BASE = "https://unnoisy-dorthy-intermeningeal.ngrok-free.dev";
 
 export default function PickupPicker() {
     const {sessionId} = useParams();
