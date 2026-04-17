@@ -5,7 +5,7 @@ import Navbar from "./navbar.jsx";
 import {parseJwt} from "./utils.js";
 
 
-const API_BASE = "https://pickuppicker-backend-299980199441.us-central1.run.app/";
+const API_BASE = "https://pickuppicker-backend-299980199441.us-central1.run.app";
 
 export default function PickupPicker() {
     const {sessionId} = useParams();
