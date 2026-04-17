@@ -97,9 +97,12 @@ export default function PickupPicker() {
 
         // Connect to the FastAPI WebSocket
         // Note: We use ws:// instead of http://
+        // Instead of hardcoding the URL, we build it based on Vercel's secure domain
+        const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const ws = new WebSocket(`${wsProtocol}//${window.location.host}/api/ws/sessions/${sessionId}`);
         // This swaps "http" for "ws" automatically!
-        const WS_BASE = API_BASE.replace(/^http/, 'ws');
-        const ws = new WebSocket(`${WS_BASE}/ws/sessions/${sessionId}`);
+        //const WS_BASE = API_BASE.replace(/^http/, 'ws');
+        //const ws = new WebSocket(`${WS_BASE}/ws/sessions/${sessionId}`);
         //const ws = new WebSocket(`ws://localhost:8080/ws/sessions/${sessionId}`);
 
         // Listen for messages from the server
