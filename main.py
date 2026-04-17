@@ -39,7 +39,7 @@ app.add_middleware(
     allow_origins=[
         "http://localhost:5173",
         #"https://unnoisy-dorthy-intermeningeal.ngrok-free.dev",
-        "https://pickup-picker.vercel.app/"
+        "https://pickup-picker.vercel.app"
     ],
     allow_credentials=True,
     allow_methods=["*"],  # Allows all HTTP methods (GET, POST, DELETE, etc.)

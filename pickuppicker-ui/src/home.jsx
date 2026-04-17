@@ -3,7 +3,7 @@ import {Link} from 'react-router-dom';
 import Navbar from './navbar.jsx';
 import {parseJwt} from './utils.js';
 
-const API_BASE = "https://pickuppicker-backend-299980199441.us-central1.run.app";
+const API_BASE = "https://pickuppicker-backend-299980199441.us-east1.run.app";
 
 export default function Home() {
     const [jwt, setJwt] = useState(localStorage.getItem("jwt"));

@@ -5,7 +5,7 @@ import Navbar from "./navbar.jsx";
 import {parseJwt} from "./utils.js";
 
 
-const API_BASE = "https://pickuppicker-backend-299980199441.us-central1.run.app";
+const API_BASE = "https://pickuppicker-backend-299980199441.us-east1.run.app";
 
 export default function PickupPicker() {
     const {sessionId} = useParams();
@@ -169,21 +169,31 @@ export default function PickupPicker() {
     };
 
     const joinSession = async (sessionId) => {
+        // 1. Optimistically update the UI IMMEDIATELY
+        // (Pretend the user is already in the session pool)
+        const optimisticPlayer = {id: userInfo.id, username: userInfo.username, team: 0};
+        setTeams(prev => ({
+            ...prev,
+            "0": [...prev["0"], optimisticPlayer]
+        }));
+
         try {
+            // 2. Send the actual request in the background
             const response = await fetch(`${API_BASE}/sessions/${sessionId}/join_session`, {
                 method: "POST",
-                headers: {
-                    // Your backend requires a valid user to create a session
-                    "Authorization": `Bearer ${jwt}`
-                }
+                headers: {"Authorization": `Bearer ${jwt}`}
             });
-            if (response.ok) {
-                setJoinStatus(true);
-            } else {
-                console.error("Failed to join session");
+
+            if (!response.ok) {
+                throw new Error("Failed to join");
             }
+            // 3. The WebSocket will eventually fire and run fetchBoardData()
+            // to ensure everything is perfectly synced.
+
         } catch (error) {
-            console.error("Error joining session:", error);
+            console.error("Error creating session:", error);
+            // 4. If it fails, revert the optimistic update
+            fetchBoardData();
         }
     };
 
