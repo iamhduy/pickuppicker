@@ -42,7 +42,10 @@ export default function Home() {
         try {
             const response = await fetch(`${API_BASE}/login`, {
                 method: "POST",
-                body: formData
+                body: formData,
+                headers: {
+                    "ngrok-skip-browser-warning": "69420"
+                }
             });
             const data = await response.json();
 
