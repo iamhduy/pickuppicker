@@ -8,4 +8,4 @@ services:
       - DB_PORT=5432
       - DB_NAME=postgres
       - DB_USER=postgres.byktlotexzhdtyvriqvm
-      - DB_PASSWORD=Thaolinh@0106 # Replace with your real Supabase password!
+      - DB_PASSWORD=${DB_PASSWORD} # Replace with your real Supabase password!

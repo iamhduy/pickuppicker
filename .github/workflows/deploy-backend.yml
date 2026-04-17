@@ -1,0 +1,39 @@
+name: Deploy FastAPI to Cloud Run
+
+on:
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - 'pickuppicker-ui/**'
+
+permissions:
+  contents: read
+  id-token: write # Required for Workload Identity Federation
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      # GOOGLE AUTH STEP
+      - name: Google Auth (Keyless)
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: 'projects/299980199441/locations/global/workloadIdentityPools/github-actions/providers/github-provider'
+          service_account: 'github-actions@project-dcb7b77b-6182-4eca-89c.iam.gserviceaccount.com'
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Deploy to Cloud Run
+        run: |
+          gcloud run deploy pickuppicker-backend \
+            --source . \
+            --region us-central1 \
+            --allow-unauthenticated \
+            --port 8080 \
+            --timeout 3600 \
+            --set-env-vars="DB_HOST=${{ secrets.DB_HOST }},DB_PORT=5432,DB_NAME=postgres,DB_USER=${{ secrets.DB_USER }},DB_PASSWORD=${{ secrets.DB_PASSWORD }}"
