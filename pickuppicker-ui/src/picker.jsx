@@ -5,7 +5,7 @@ import Navbar from "./navbar.jsx";
 import {parseJwt} from "./utils.js";
 
 
-const API_BASE = "http://localhost:8080";
+const API_BASE = import.meta.env.VITE_API_BASE;
 
 export default function PickupPicker() {
     const {sessionId} = useParams();
@@ -97,7 +97,10 @@ export default function PickupPicker() {
 
         // Connect to the FastAPI WebSocket
         // Note: We use ws:// instead of http://
-        const ws = new WebSocket(`ws://localhost:8080/ws/sessions/${sessionId}`);
+        // This swaps "http" for "ws" automatically!
+        const WS_BASE = API_BASE.replace(/^http/, 'ws');
+        const ws = new WebSocket(`${WS_BASE}/ws/sessions/${sessionId}`);
+        //const ws = new WebSocket(`ws://localhost:8080/ws/sessions/${sessionId}`);
 
         // Listen for messages from the server
         ws.onmessage = (event) => {
@@ -225,7 +228,7 @@ export default function PickupPicker() {
         }
     };
 
-        const leaveKeeper = async (sessionId) => {
+    const leaveKeeper = async (sessionId) => {
         try {
             const response = await fetch(`${API_BASE}/sessions/${sessionId}/player`, {
                 method: "POST",
@@ -245,7 +248,7 @@ export default function PickupPicker() {
         }
     };
 
-        const distributeKeeper = async (sessionId) => {
+    const distributeKeeper = async (sessionId) => {
         try {
             const response = await fetch(`${API_BASE}/sessions/${sessionId}/randomize`, {
                 method: "POST",
@@ -257,8 +260,9 @@ export default function PickupPicker() {
             const data = await response.json()
             console.log(data.code);
             if (response.ok) {
-                if (!data.code) {alert("Need at least 2 keepers to distribute team!");}
-                else {
+                if (!data.code) {
+                    alert("Need at least 2 keepers to distribute team!");
+                } else {
                     await fetchBoardData()
                 }
             } else {
