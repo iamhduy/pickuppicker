@@ -38,7 +38,7 @@ app.add_middleware(
     # Add your frontend URLs here. Vite usually runs on localhost:5173
     allow_origins=[
         "http://localhost:5173",
-        "https://unnoisy-dorthy-intermeningeal.ngrok-free.dev",
+        #"https://unnoisy-dorthy-intermeningeal.ngrok-free.dev",
         "https://pickup-picker.vercel.app/"
     ],
     allow_credentials=True,

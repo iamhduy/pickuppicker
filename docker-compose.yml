@@ -3,38 +3,9 @@ services:
     build: .
     ports:
       - "8080:8080"
-    #command: uvicorn main:app --host 0.0.0.0 --port 8080 --reload
-    depends_on:
-      postgres:
-        condition: service_healthy
     environment:
-      DB_HOST: postgres
-      DB_PORT: 5432
-      DB_NAME: app_db
-      DB_USER: app_user
-      DB_PASSWORD: password
-    volumes:
-      - .:/app
-      - ../database:/app/data
-
-  postgres:
-    image: postgres:16
-    container_name: project_pg
-    ports:
-      - "5432:5432"
-    environment:
-      POSTGRES_DB: app_db
-      POSTGRES_USER: app_user
-      POSTGRES_PASSWORD: password
-    volumes:
-      - pg_data_proj:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U app_user -d app_db"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-
-
-
-volumes:
-  pg_data_proj:
+      - DB_HOST=aws-1-us-east-1.pooler.supabase.com
+      - DB_PORT=5432
+      - DB_NAME=postgres
+      - DB_USER=postgres.byktlotexzhdtyvriqvm
+      - DB_PASSWORD=Thaolinh@0106 # Replace with your real Supabase password!
