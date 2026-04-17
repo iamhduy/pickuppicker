@@ -11,7 +11,7 @@ export default function Home() {
     const [passwordInput, setPasswordInput] = useState("");
     const [sessions, setSessions] = useState([]);
     const homeText = "Pickup Picker";
-    // NEW: State to toggle between Login and Sign Up views
+    // Toggle between Login and Sign Up views
     const [isLoginView, setIsLoginView] = useState(true);
 
     // Use for session create func
@@ -66,7 +66,6 @@ export default function Home() {
         const formData = new FormData();
         formData.append("username", usernameInput);
         formData.append("password", passwordInput);
-        // Note: Your backend automatically applies salt="XD" if we don't send one
 
         try {
             const response = await fetch(`${API_BASE}/create_player`, {
@@ -80,7 +79,6 @@ export default function Home() {
                 setIsLoginView(true); // Switch the form back to login mode
                 setPasswordInput(""); // Clear the password field for safety
             } else {
-                // FastAPI returns validation errors in the "detail" key
                 alert(data.detail || "Failed to create account");
             }
         } catch (error) {
@@ -120,7 +118,6 @@ export default function Home() {
             const response = await fetch(`${API_BASE}/add_session`, {
                 method: "POST",
                 headers: {
-                    // Your backend requires a valid user to create a session
                     "Authorization": `Bearer ${jwt}`
                 },
                 body: formData

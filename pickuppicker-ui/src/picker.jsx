@@ -96,9 +96,9 @@ export default function PickupPicker() {
         fetchBoardData();
 
         // Connect to the FastAPI WebSocket
-        // Note: We use ws:// instead of http://
+        // Use ws:// instead of http://
         // Instead of hardcoding the URL, we build it based on Vercel's secure domain
-        const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        //const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
         const ws = new WebSocket(`${API_BASE}/ws/sessions/${sessionId}`);
         // This swaps "http" for "ws" automatically!
         //const WS_BASE = API_BASE.replace(/^http/, 'ws');
@@ -161,7 +161,6 @@ export default function PickupPicker() {
             if (!response.ok) {
                 throw new Error('Network response was not ok');
             }
-            // You can add a toast notification here confirming the move
         } catch (error) {
             console.error("Failed to update team on server. Reverting UI state.", error);
             // Optional: Revert the UI state if the API call fails
@@ -169,7 +168,7 @@ export default function PickupPicker() {
     };
 
     const joinSession = async (sessionId) => {
-        // 1. Optimistically update the UI IMMEDIATELY
+        // Optimistically update the UI
         // (Pretend the user is already in the session pool)
         const optimisticPlayer = {id: userInfo.id, username: userInfo.username, team: 0};
         setTeams(prev => ({
@@ -178,7 +177,7 @@ export default function PickupPicker() {
         }));
 
         try {
-            // 2. Send the actual request in the background
+            // Send the actual request in the background
             const response = await fetch(`${API_BASE}/sessions/${sessionId}/join_session`, {
                 method: "POST",
                 headers: {"Authorization": `Bearer ${jwt}`}
@@ -187,12 +186,12 @@ export default function PickupPicker() {
             if (!response.ok) {
                 throw new Error("Failed to join");
             }
-            // 3. The WebSocket will eventually fire and run fetchBoardData()
+            // WebSocket will eventually fire and run fetchBoardData()
             // to ensure everything is perfectly synced.
 
         } catch (error) {
             console.error("Error creating session:", error);
-            // 4. If it fails, revert the optimistic update
+            // If it fails, revert the optimistic update
             fetchBoardData();
         }
     };
@@ -202,7 +201,7 @@ export default function PickupPicker() {
             const response = await fetch(`${API_BASE}/sessions/${sessionId}/leave`, {
                 method: "POST",
                 headers: {
-                    // Your backend requires a valid user to create a session
+                    // Authorize a valid user
                     "Authorization": `Bearer ${jwt}`
                 }
             });
@@ -226,7 +225,6 @@ export default function PickupPicker() {
             const response = await fetch(`${API_BASE}/sessions/${sessionId}/captain`, {
                 method: "POST",
                 headers: {
-                    // Your backend requires a valid user to create a session
                     "Authorization": `Bearer ${jwt}`
                 }
             });
@@ -246,7 +244,6 @@ export default function PickupPicker() {
             const response = await fetch(`${API_BASE}/sessions/${sessionId}/player`, {
                 method: "POST",
                 headers: {
-                    // Your backend requires a valid user to create a session
                     "Authorization": `Bearer ${jwt}`
                 }
             });
@@ -266,7 +263,6 @@ export default function PickupPicker() {
             const response = await fetch(`${API_BASE}/sessions/${sessionId}/randomize`, {
                 method: "POST",
                 headers: {
-                    // Your backend requires a valid user to create a session
                     "Authorization": `Bearer ${jwt}`
                 }
             });
@@ -293,7 +289,7 @@ export default function PickupPicker() {
             {/* TOP NAVIGATION CONTAINER */}
             <Navbar userInfo={userInfo} onLogout={handleLogout} navBarText={homeText}/>
 
-            {/* Your drag and drop board goes here... */}
+            {/* Drag and drop board */}
             <div style={{marginTop: '2rem'}}>
                 <h2>Session Board</h2>
 
