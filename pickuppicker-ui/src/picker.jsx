@@ -5,7 +5,7 @@ import Navbar from "./navbar.jsx";
 import {parseJwt} from "./utils.js";
 
 
-const API_BASE = import.meta.env.VITE_API_BASE;
+const API_BASE = "http://localhost:8080";
 
 export default function PickupPicker() {
     const {sessionId} = useParams();

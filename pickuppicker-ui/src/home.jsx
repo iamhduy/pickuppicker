@@ -3,7 +3,7 @@ import {Link} from 'react-router-dom';
 import Navbar from './navbar.jsx';
 import {parseJwt} from './utils.js';
 
-const API_BASE = import.meta.env.VITE_API_BASE;
+const API_BASE = "http://localhost:8080";
 
 export default function Home() {
     const [jwt, setJwt] = useState(localStorage.getItem("jwt"));
