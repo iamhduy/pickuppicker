@@ -190,9 +190,9 @@ export default function PickupPicker() {
             // to ensure everything is perfectly synced.
 
         } catch (error) {
-            console.error("Error creating session:", error);
+            console.error("Error joining session:", error);
             // If it fails, revert the optimistic update
-            fetchBoardData();
+            await fetchBoardData();
         }
     };
 
