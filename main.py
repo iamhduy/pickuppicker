@@ -91,7 +91,7 @@ def home():
 # Players  #
 ############
 @app.get("/players")
-def get_all_players():
+def get_all_players(user: dict = Depends(get_current_user)):
     conn = get_db()
     c = conn.cursor()
 
@@ -131,7 +131,7 @@ def create_player(username: str = Form(default=None), password: str = Form(defau
 
 
 @app.delete("/{player_id}/delete_player")
-def delete_player(player_id: int):
+def delete_player(player_id: int, user: dict = Depends(get_current_user)):
     conn = get_db()
     c = conn.cursor()
     c.execute("DELETE from players WHERE id = %s", (player_id,))
@@ -259,13 +259,18 @@ def add_session(session_date: str = Form(default=None), user: dict = Depends(get
     conn = get_db()
     c = conn.cursor()
 
-    # Change this to jwt - authentication later
-    c.execute("INSERT INTO sessions (date, owner) VALUES (%s, %s)", (session_date, user_id))
+    c.execute("SELECT id FROM sessions WHERE date = %s", (session_date, ))
+    if not c.fetchone():
+        # Change this to jwt - authentication later
+        c.execute("INSERT INTO sessions (date, owner) VALUES (%s, %s)", (session_date, user_id))
+        message = f'Session created by player {get_username_by_id(user_id)}'
+    else:
+        message = 'A session with the same time existed'
 
     conn.commit()
     conn.close()
 
-    return {"message": f'Session created by player {get_username_by_id(user_id)}', "date": session_date}
+    return {"message": message, "date": session_date}
 
 
 @app.delete("/{session_id}/delete_session")
