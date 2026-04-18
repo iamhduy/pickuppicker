@@ -190,7 +190,7 @@ export default function Home() {
                                 }}>
 
                                     <div>
-                                        <strong>Name:</strong> {session.name} |
+                                        <strong>Name:</strong> {session.name} <br/>
                                         <strong>Date:</strong> {session.date} <br/>
                                         <small>Owner: {session.owner} | Players
                                             joined: {session["player joined"]}</small>

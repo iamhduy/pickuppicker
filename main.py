@@ -264,7 +264,7 @@ def add_session(session_date: str = Form(default=None), session_name: str = Form
     c.execute("SELECT id FROM sessions WHERE date = %s", (session_date,))
     if not c.fetchone():
         # Change this to jwt - authentication later
-        c.execute("INSERT INTO sessions (date, owner, name) VALUES (%s, %s)", (session_date, user_id, session_name))
+        c.execute("INSERT INTO sessions (date, owner, name) VALUES (%s, %s, %s)", (session_date, user_id, session_name))
         message = f'Session created by player {get_username_by_id(user_id)}'
     else:
         message = 'A session with the same time existed'
