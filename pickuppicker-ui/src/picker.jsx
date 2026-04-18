@@ -291,7 +291,7 @@ export default function PickupPicker() {
 
             {/* Drag and drop board */}
             <div style={{marginTop: '2rem'}}>
-                <h2>Session Board</h2>
+                <h2>Session Board - {sessionDetails?.name}</h2>
 
                 <div style={{display: 'flex', gap: '10px', justifyContent: 'space-between', alignItems: 'center'}}>
                     <strong>Date: {sessionDetails?.date}</strong>

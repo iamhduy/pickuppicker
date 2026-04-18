@@ -18,6 +18,7 @@ export default function Home() {
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [newSessionDate, setNewSessionDate] = useState("");
     const [createStatus, setCreateSessionStatus] = useState(true);
+    const [newSessionName, setNewSessionName] = useState("test");
 
     const userInfo = jwt ? parseJwt(jwt) : null;
 
@@ -116,6 +117,7 @@ export default function Home() {
         e.preventDefault();
         const formData = new FormData();
         formData.append("session_date", newSessionDate);
+        formData.append("session_name", newSessionName);
 
         try {
             const response = await fetch(`${API_BASE}/add_session`, {
@@ -138,8 +140,7 @@ export default function Home() {
             }
         } catch (error) {
             console.error("Error creating session:", error);
-        }
-        finally {
+        } finally {
             setCreateSessionStatus(true);
         }
     };
@@ -189,6 +190,7 @@ export default function Home() {
                                 }}>
 
                                     <div>
+                                        <strong>Name:</strong> {session.name} |
                                         <strong>Date:</strong> {session.date} <br/>
                                         <small>Owner: {session.owner} | Players
                                             joined: {session["player joined"]}</small>
@@ -253,6 +255,20 @@ export default function Home() {
                             <h3 style={{marginTop: 0}}>Create New Session</h3>
                             <form onSubmit={handleCreateSession}
                                   style={{display: 'flex', flexDirection: 'column', gap: '15px'}}>
+                                <label>
+                                    Session name:
+                                    <input
+                                        type="text"
+                                        value={newSessionName}
+                                        onChange={(e) => setNewSessionName(e.target.value)}
+                                        style={{
+                                            width: '100%',
+                                            padding: '8px',
+                                            marginTop: '5px',
+                                            boxSizing: 'border-box'
+                                        }}
+                                    />
+                                </label>
 
                                 <label>
                                     Select Date & Time:

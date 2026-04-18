@@ -37,7 +37,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:5173",
-        #"https://unnoisy-dorthy-intermeningeal.ngrok-free.dev",
+        # "https://unnoisy-dorthy-intermeningeal.ngrok-free.dev",
         "https://pickup-picker.vercel.app"
     ],
     allow_credentials=True,
@@ -177,6 +177,7 @@ def get_all_sessions():
         session_info["id"] = session_id
         session_info["owner"] = get_username_by_id(r[2])
         session_info["date"] = r[1].strftime("%m/%d/%Y - %H:%M")
+        session_info["name"] = r[3]
 
         c.execute("SELECT COUNT(*) FROM session_player WHERE session_id = %s", (session_id,))
         session_info["player joined"] = c.fetchone()[0]
@@ -251,7 +252,8 @@ async def join_player(session_id: int, user: dict = Depends(get_current_user)):
 
 
 @app.post("/add_session")
-def add_session(session_date: str = Form(default=None), user: dict = Depends(get_current_user)):
+def add_session(session_date: str = Form(default=None), session_name: str = Form(default=None),
+                user: dict = Depends(get_current_user)):
     if not session_date:
         raise HTTPException(status_code=422, detail="Session date must not be None")
 
@@ -259,10 +261,10 @@ def add_session(session_date: str = Form(default=None), user: dict = Depends(get
     conn = get_db()
     c = conn.cursor()
 
-    c.execute("SELECT id FROM sessions WHERE date = %s", (session_date, ))
+    c.execute("SELECT id FROM sessions WHERE date = %s", (session_date,))
     if not c.fetchone():
         # Change this to jwt - authentication later
-        c.execute("INSERT INTO sessions (date, owner) VALUES (%s, %s)", (session_date, user_id))
+        c.execute("INSERT INTO sessions (date, owner, name) VALUES (%s, %s)", (session_date, user_id, session_name))
         message = f'Session created by player {get_username_by_id(user_id)}'
     else:
         message = 'A session with the same time existed'
@@ -294,6 +296,7 @@ def view_session_by_id(session_id: int):
     session_info = c.fetchone()
     date = session_info[1].strftime("%m/%d/%Y - %H:%M")
     owner = get_username_by_id(session_info[2])
+    session_name = session_info[3]
 
     c.execute("SELECT player_id, team_id, pos FROM session_player WHERE session_id = %s", (session_id,))
     rows = c.fetchall()
@@ -311,8 +314,10 @@ def view_session_by_id(session_id: int):
             display_role = "Captain"
             info = {"player": get_username_by_id(player_id), "team": team_id, "id": player_id, "role": display_role}
             keepers.append(info)
-    print("KEEPERS:", keepers)
-    return {"id": session_id, "date": date, "owner": owner, "players": players, "keepers": keepers}
+
+    #print("KEEPERS:", keepers)
+    return {"id": session_id, "name": session_name, "date": date, "owner": owner, "players": players,
+            "keepers": keepers}
 
 
 @app.post("/sessions/{session_id}/randomize")
