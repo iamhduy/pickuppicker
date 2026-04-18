@@ -3,7 +3,7 @@ import {Link} from 'react-router-dom';
 import Navbar from './navbar.jsx';
 import {parseJwt} from './utils.js';
 
-const API_BASE = "https://pickuppicker-backend-299980199441.us-east1.run.app";
+const API_BASE = import.meta.env.VITE_API_BASE;
 
 export default function Home() {
     const [jwt, setJwt] = useState(localStorage.getItem("jwt"));
@@ -190,10 +190,20 @@ export default function Home() {
                                 }}>
 
                                     <div>
-                                        <strong>Name:</strong> {session.name} <br/>
-                                        <strong>Date:</strong> {session.date} <br/>
-                                        <small>Owner: {session.owner} | Players
-                                            joined: {session["player joined"]}</small>
+                                        <div style={{
+                                            display: 'grid',
+                                            gridTemplateColumns: 'max-content 1fr',
+                                            columnGap: '8px'
+                                        }}>
+                                            <strong>Name:</strong>
+                                            <span>{session.name}</span>
+
+                                            <strong>Date:</strong>
+                                            <span>{session.date}</span>
+                                        </div>
+                                        <small style={{marginTop: '4px', display: 'block'}}>
+                                            Owner: {session.owner} | Players joined: {session["player joined"]}
+                                        </small>
                                     </div>
 
                                     <div style={{display: 'flex', gap: '10px', alignItems: 'center'}}>
