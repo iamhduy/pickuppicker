@@ -17,6 +17,7 @@ export default function Home() {
     // Use for session create func
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [newSessionDate, setNewSessionDate] = useState("");
+    const [createStatus, setCreateSessionStatus] = useState(true);
 
     const userInfo = jwt ? parseJwt(jwt) : null;
 
@@ -110,6 +111,8 @@ export default function Home() {
     };
 
     const handleCreateSession = async (e) => {
+        if (!createStatus) return;
+
         e.preventDefault();
         const formData = new FormData();
         formData.append("session_date", newSessionDate);
@@ -122,6 +125,8 @@ export default function Home() {
                 },
                 body: formData
             });
+            setCreateSessionStatus(false);
+
             if (response.ok) {
                 setShowCreateModal(false); // Close the modal
                 setNewSessionDate("");     // Reset the input
@@ -131,6 +136,9 @@ export default function Home() {
             }
         } catch (error) {
             console.error("Error creating session:", error);
+        }
+        finally {
+            setCreateSessionStatus(true);
         }
     };
 
