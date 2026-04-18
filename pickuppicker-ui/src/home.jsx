@@ -112,7 +112,7 @@ export default function Home() {
 
     const handleCreateSession = async (e) => {
         if (!createStatus) return;
-
+        setCreateSessionStatus(false);
         e.preventDefault();
         const formData = new FormData();
         formData.append("session_date", newSessionDate);
@@ -125,12 +125,14 @@ export default function Home() {
                 },
                 body: formData
             });
-            setCreateSessionStatus(false);
 
             if (response.ok) {
-                setShowCreateModal(false); // Close the modal
+                setShowCreateModal(false);
                 setNewSessionDate("");     // Reset the input
-                fetchSessions();           // Refresh the list so the new session appears
+                fetchSessions();
+
+                const data = await response.json();
+                alert(data.message || "Failed to display message...");
             } else {
                 console.error("Failed to create session");
             }

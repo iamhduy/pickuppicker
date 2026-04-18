@@ -167,7 +167,7 @@ def get_all_sessions():
     conn = get_db()
     c = conn.cursor()
 
-    c.execute("SELECT * FROM sessions")
+    c.execute("SELECT * FROM sessions ORDER BY date DESC")
     rows = c.fetchall()
 
     sessions = []
