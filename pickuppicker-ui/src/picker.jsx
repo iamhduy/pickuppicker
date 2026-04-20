@@ -192,7 +192,7 @@ export default function PickupPicker() {
         } catch (error) {
             console.error("Error joining session:", error);
             // If it fails, revert the optimistic update
-            await fetchBoardData();
+            fetchBoardData();
         }
     };
 
