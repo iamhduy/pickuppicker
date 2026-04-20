@@ -170,11 +170,11 @@ export default function PickupPicker() {
     const joinSession = async (sessionId) => {
         // Optimistically update the UI
         // (Pretend the user is already in the session pool)
-        const optimisticPlayer = {id: userInfo.id, username: userInfo.username, team: 0};
+        /*const optimisticPlayer = {id: userInfo.id, username: userInfo.username, team: 0};
         setTeams(prev => ({
             ...prev,
             "0": [...prev["0"], optimisticPlayer]
-        }));
+        }));*/
 
         try {
             // Send the actual request in the background
@@ -192,7 +192,7 @@ export default function PickupPicker() {
         } catch (error) {
             console.error("Error joining session:", error);
             // If it fails, revert the optimistic update
-            fetchBoardData();
+            //fetchBoardData();
         }
     };
 
